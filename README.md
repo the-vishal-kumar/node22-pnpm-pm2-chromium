@@ -60,6 +60,8 @@ FROM --platform=$BUILDPLATFORM node:22-alpine
 LABEL maintainer="Vishal Kumar <vishal194kumar@gmail.com>"
 LABEL base.image="node:22-alpine"
 
+ARG PNPM_VERSION=12.6.0
+
 RUN apk add --no-cache \
       bash \
       curl \
@@ -70,7 +72,7 @@ RUN apk add --no-cache \
       ttf-freefont \
       ca-certificates && \
     corepack enable && \
-    corepack prepare pnpm@latest --activate && \
+    corepack prepare pnpm@${PNPM_VERSION} --activate && \
     npm install -g pm2 && \
     rm -rf /root/.npm /root/.cache /var/cache/apk/* /usr/share/man /tmp/*
 
