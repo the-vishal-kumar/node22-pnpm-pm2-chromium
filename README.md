@@ -21,7 +21,7 @@
 - ✅ Headless `Chromium` pre-installed (for Puppeteer, scraping, PDF, etc.)
 - ✅ Cleaned and slimmed image layers
 - ✅ Multi-arch: `linux/amd64` & `linux/arm64` (Mac M1, EC2 Graviton ready)
-- ✅ Rebuilt weekly and scanned with Trivy before every push (see [Supply-chain hygiene](#-supply-chain-hygiene))
+- ✅ Rebuilt weekly; the amd64 build is smoke-tested and scanned with Trivy in CI before the multi-arch push (see [Supply-chain hygiene](#-supply-chain-hygiene))
 
 ---
 
@@ -73,13 +73,10 @@ See the [`Dockerfile`](./Dockerfile). In short: `node:22-alpine`, then `apk add`
 
 Every tag is a multi-arch manifest: Docker picks `amd64` or `arm64` for you.
 
+> **Runs as root by default.** Like the official `node` images, this base image doesn't switch user, so your Dockerfile should: add `USER node` after copying your app (and run Chromium without `--no-sandbox` once you do).
+
 > **Note on older `arm64` pulls.** Before the weekly-rebuild change, the `Dockerfile` started with `FROM --platform=$BUILDPLATFORM`, so the `linux/arm64` variant was built from the amd64 base and contained x86-64 binaries. Builds from this version on use the correct base for each platform. If you run on arm64 (Apple Silicon, Graviton), pull a fresh tag.
 
----------------- | ------------------------------------------------------- |
-| `latest`         | Latest stable build (Node 22 + Chromium + pm2 + pnpm)   |
-| `22`             | Node.js 22 with pm2 and pnpm                            |
-| `22-chromium`    | Node.js 22 + pm2 + pnpm + Chromium headless             |
-| `arm64`, `amd64` | Automatically resolved via Docker’s multi-arch manifest |
 
 ---
 
@@ -89,7 +86,7 @@ The [publish workflow](./.github/workflows/docker-publish.yml) runs on every pus
 
 1. **Weekly rebuild** (Mondays, 03:17 UTC) with no layer cache, so patched `node:22-alpine` and Alpine packages land even when this repo doesn't change. GitHub pauses scheduled workflows after 60 days without repository activity; re-enable it from the Actions tab if that happens.
 2. **Smoke test.** The amd64 image runs as the non-root `node` user with networking disabled. It checks `node`, `pnpm` and `pm2`, and renders a page with headless Chromium.
-3. **Trivy scan.** The build fails on any `CRITICAL` vulnerability that has a fix available. Unfixed upstream CVEs are reported but don't block. The Trivy action is pinned to a commit SHA, not a movable tag.
+3. **Trivy scan.** The amd64 image is scanned before the multi-arch build is pushed; the arm64 variant and the final rebuild aren't scanned separately yet. The build fails on any `CRITICAL` vulnerability that has a fix available. Unfixed upstream CVEs are reported but don't block. The Trivy action is pinned to a commit SHA, not a movable tag.
 4. **Versioned tags** derived from the versions actually inside the image (see [Available Tags](#-available-tags)), plus OCI labels for source, revision, license and version.
 5. **Least-privilege token.** The workflow token is read-only (`permissions: contents: read`). Docker Hub credentials come from the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repository secrets and are never used on pull requests.
 
